@@ -1,0 +1,79 @@
+# The ${VAR:-default} fallbacks match .env.example, so `docker compose up --build`
+# also works without a .env file. These defaults are for local development only.
+
+name: ordens-servico
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ordens}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ordens_dev_local}
+      POSTGRES_DB: ${POSTGRES_DB:-ordens}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      # -h 127.0.0.1 forces TCP: during first-boot initialization Postgres only
+      # listens on a Unix socket, and the API must not start against that.
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build:
+      context: .
+      target: production
+    environment:
+      PORT: 3000
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: ${POSTGRES_USER:-ordens}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-ordens_dev_local}
+      PGDATABASE: ${POSTGRES_DB:-ordens}
+    ports:
+      # Published on localhost only: the API has no authentication.
+      - '127.0.0.1:${API_PORT:-3000}:3000'
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-qO', '/dev/null', 'http://127.0.0.1:3000/health']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Isolated database for the test suite: separate container, credentials and
+  # database name, no host port, and data kept in memory (gone when it stops).
+  db-test:
+    profiles: [test]
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ordens_test
+      POSTGRES_PASSWORD: ordens_test
+      POSTGRES_DB: ordens_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  test:
+    profiles: [test]
+    build:
+      context: .
+      target: test
+    environment:
+      PGHOST: db-test
+      PGPORT: 5432
+      PGUSER: ordens_test
+      PGPASSWORD: ordens_test
+      PGDATABASE: ordens_test
+    depends_on:
+      db-test:
+        condition: service_healthy
+
+volumes:
+  db-data:
