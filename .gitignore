@@ -1,0 +1,6 @@
+node_modules/
+.env
+
+# Local-only files, not part of the delivery
+REVIEW_NOTES.md
+desafio_tecnico_Aurion.pdf
