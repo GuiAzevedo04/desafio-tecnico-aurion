@@ -95,11 +95,25 @@ describe('error responses', () => {
   });
 });
 
-describe('health check', () => {
+describe('operational endpoints', () => {
   test('GET /health returns 200 while the database answers', async () => {
     const res = await api.get('/health');
 
     assert.equal(res.status, 200);
     assert.deepEqual(res.body, { status: 'ok' });
+  });
+
+  test('GET /openapi.yaml serves the OpenAPI document', async () => {
+    const res = await api.get('/openapi.yaml');
+
+    assert.equal(res.status, 200);
+    assert.match(res.text, /^openapi: 3\./);
+  });
+
+  test('GET /docs/ serves the Swagger UI page', async () => {
+    const res = await api.get('/docs/');
+
+    assert.equal(res.status, 200);
+    assert.match(res.headers['content-type'], /^text\/html/);
   });
 });

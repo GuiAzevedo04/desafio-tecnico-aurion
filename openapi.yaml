@@ -1,0 +1,235 @@
+openapi: 3.0.3
+info:
+  title: API de ordens de serviço
+  version: 1.0.0
+  description: |
+    API RESTful para cadastrar, consultar, atualizar e excluir ordens de serviço.
+
+    Todos os erros seguem o mesmo formato (`Erro`). Campos fora do contrato são
+    rejeitados com 400.
+servers:
+  - url: /
+paths:
+  /ordens:
+    post:
+      summary: Cria uma ordem de serviço
+      description: Toda ordem nasce com status `aberta` e sem solução.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NovaOrdem'
+      responses:
+        '201':
+          description: Ordem criada.
+          headers:
+            Location:
+              description: Caminho da ordem criada.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ordem'
+        '400':
+          $ref: '#/components/responses/EntradaInvalida'
+    get:
+      summary: Lista as ordens de serviço
+      description: Retorna todas as ordens, da mais antiga para a mais recente. Retorna `[]` quando não há ordens.
+      responses:
+        '200':
+          description: Lista de ordens.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ordem'
+  /ordens/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Identificador da ordem (UUID).
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Retorna uma ordem de serviço
+      responses:
+        '200':
+          description: Ordem encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ordem'
+        '400':
+          $ref: '#/components/responses/EntradaInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrada'
+    patch:
+      summary: Atualiza campos de uma ordem de serviço
+      description: |
+        Aceita qualquer combinação de `titulo`, `descricao`, `status` e `solucao`,
+        com ao menos um campo.
+
+        Regra de conclusão: depois de aplicar a alteração, a ordem só pode ficar
+        com status `concluida` se tiver uma `solucao` com texto. A regra é avaliada
+        sobre o estado resultante (ordem armazenada + campos enviados).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlteracaoOrdem'
+      responses:
+        '200':
+          description: Ordem atualizada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ordem'
+        '400':
+          $ref: '#/components/responses/EntradaInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrada'
+    delete:
+      summary: Exclui uma ordem de serviço
+      responses:
+        '204':
+          description: Ordem excluída. Corpo vazio.
+        '400':
+          $ref: '#/components/responses/EntradaInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrada'
+components:
+  schemas:
+    Status:
+      type: string
+      enum: [aberta, em_andamento, concluida]
+    Ordem:
+      type: object
+      required: [id, titulo, descricao, status, solucao, criado_em, atualizado_em]
+      properties:
+        id:
+          type: string
+          format: uuid
+        titulo:
+          type: string
+        descricao:
+          type: string
+        status:
+          $ref: '#/components/schemas/Status'
+        solucao:
+          type: string
+          nullable: true
+        criado_em:
+          type: string
+          format: date-time
+        atualizado_em:
+          type: string
+          format: date-time
+      example:
+        id: 3f0e8a52-5a0b-4b0e-9d43-8a2f1f6f2c11
+        titulo: Inspeção da válvula VLV-OS-7F3A
+        descricao: Verificar vedação e registrar o resultado da inspeção.
+        status: aberta
+        solucao: null
+        criado_em: '2026-11-16T12:00:00.000Z'
+        atualizado_em: '2026-11-16T12:00:00.000Z'
+    NovaOrdem:
+      type: object
+      additionalProperties: false
+      required: [titulo, descricao]
+      properties:
+        titulo:
+          type: string
+          description: Ao menos um caractere além de espaços. Máximo de 200 caracteres.
+          maxLength: 200
+        descricao:
+          type: string
+          description: Ao menos um caractere além de espaços. Máximo de 5000 caracteres.
+          maxLength: 5000
+      example:
+        titulo: Inspeção da válvula VLV-OS-7F3A
+        descricao: Verificar vedação e registrar o resultado da inspeção.
+    AlteracaoOrdem:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        titulo:
+          type: string
+          maxLength: 200
+        descricao:
+          type: string
+          maxLength: 5000
+        status:
+          $ref: '#/components/schemas/Status'
+        solucao:
+          type: string
+          nullable: true
+          maxLength: 5000
+          description: Texto em branco ou `null` remove a solução.
+      example:
+        status: concluida
+        solucao: Vedação substituída e válvula testada.
+    Erro:
+      type: object
+      required: [erro]
+      properties:
+        erro:
+          type: object
+          required: [codigo, mensagem, detalhes]
+          properties:
+            codigo:
+              type: string
+              enum:
+                - ENTRADA_INVALIDA
+                - ID_INVALIDO
+                - JSON_INVALIDO
+                - REGRA_DE_CONCLUSAO
+                - REQUISICAO_INVALIDA
+                - ORDEM_NAO_ENCONTRADA
+                - ROTA_NAO_ENCONTRADA
+                - CORPO_MUITO_GRANDE
+                - ERRO_INTERNO
+            mensagem:
+              type: string
+            detalhes:
+              type: array
+              description: Problemas de validação por campo. Vazio nos demais erros.
+              items:
+                type: object
+                required: [campo, mensagem]
+                properties:
+                  campo:
+                    type: string
+                  mensagem:
+                    type: string
+  responses:
+    EntradaInvalida:
+      description: ID malformado, corpo inválido, campo fora do contrato ou violação da regra de conclusão.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+          example:
+            erro:
+              codigo: ENTRADA_INVALIDA
+              mensagem: Dados de entrada inválidos.
+              detalhes:
+                - campo: titulo
+                  mensagem: campo obrigatório
+    NaoEncontrada:
+      description: O ID é válido, mas não existe ordem com ele.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+          example:
+            erro:
+              codigo: ORDEM_NAO_ENCONTRADA
+              mensagem: Ordem de serviço não encontrada.
+              detalhes: []

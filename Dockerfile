@@ -17,6 +17,7 @@ ENV NODE_ENV=production
 RUN npm ci --omit=dev && npm cache clean --force
 COPY src ./src
 COPY db ./db
+COPY openapi.yaml ./
 USER node
 EXPOSE 3000
 CMD ["node", "src/server.js"]
