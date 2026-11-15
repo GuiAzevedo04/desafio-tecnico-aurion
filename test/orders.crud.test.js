@@ -27,7 +27,9 @@ test('POST /ordens creates an order as "aberta" and returns it with 201', async 
 });
 
 test('POST /ordens stores titulo and descricao without surrounding whitespace', async () => {
-  const res = await api.post('/ordens').send({ titulo: '  Trocar filtro  ', descricao: '\tLinha 2\n' });
+  const res = await api
+    .post('/ordens')
+    .send({ titulo: '  Trocar filtro  ', descricao: '\tLinha 2\n' });
 
   assert.equal(res.status, 201);
   assert.equal(res.body.titulo, 'Trocar filtro');
