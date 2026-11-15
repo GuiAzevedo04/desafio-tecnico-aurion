@@ -1,7 +1,13 @@
 import { Router } from 'express';
+import { withTransaction } from '../db/pool.js';
 import { HttpError } from '../http/errors.js';
 import * as repository from './repository.js';
-import { assertValidId, parseCreateBody } from './validation.js';
+import {
+  assertConclusionRule,
+  assertValidId,
+  parseCreateBody,
+  parseUpdateBody,
+} from './validation.js';
 
 export const ordersRouter = Router();
 
@@ -32,6 +38,27 @@ ordersRouter.get('/:id', async (req, res) => {
   if (!order) {
     throw orderNotFound();
   }
+  res.json(order);
+});
+
+// Order of checks: id format (400, in router.param) -> body (400) -> order
+// exists (404) -> conclusion rule on the resulting state (400).
+ordersRouter.patch('/:id', async (req, res) => {
+  const changes = parseUpdateBody(req.body);
+
+  // The rule depends on the stored order, so reading, checking and writing
+  // happen in one transaction with the row locked. Without the lock, two
+  // concurrent PATCHes could each validate against a state the other is changing.
+  const order = await withTransaction(async (client) => {
+    const current = await repository.findByIdForUpdate(client, req.params.id);
+    if (!current) {
+      throw orderNotFound();
+    }
+    const updated = { ...current, ...changes };
+    assertConclusionRule(updated);
+    return repository.update(client, updated);
+  });
+
   res.json(order);
 });
 

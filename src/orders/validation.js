@@ -1,6 +1,9 @@
 import { HttpError } from '../http/errors.js';
 
+const STATUSES = ['aberta', 'em_andamento', 'concluida'];
+
 const CREATE_FIELDS = ['titulo', 'descricao'];
+const UPDATE_FIELDS = ['titulo', 'descricao', 'status', 'solucao'];
 
 const MAX_TITULO_LENGTH = 200;
 const MAX_LONG_TEXT_LENGTH = 5000;
@@ -33,9 +36,31 @@ function parseRequiredText(input, maxLength) {
   return result;
 }
 
+function parseStatus(input) {
+  if (!STATUSES.includes(input)) {
+    return { error: `deve ser um de: ${STATUSES.join(', ')}` };
+  }
+  return { value: input };
+}
+
+// null and blank text both mean "no solution" and are stored as NULL, so the
+// conclusion rule only has one representation of "missing" to deal with.
+function parseSolucao(input) {
+  if (input === null) {
+    return { value: null };
+  }
+  const result = parseText(input, MAX_LONG_TEXT_LENGTH);
+  if (result.value === '') {
+    return { value: null };
+  }
+  return result;
+}
+
 const FIELD_PARSERS = {
   titulo: (input) => parseRequiredText(input, MAX_TITULO_LENGTH),
   descricao: (input) => parseRequiredText(input, MAX_LONG_TEXT_LENGTH),
+  status: parseStatus,
+  solucao: parseSolucao,
 };
 
 function invalidInput(message, details) {
@@ -80,6 +105,27 @@ function parseBody(body, allowedFields, requiredFields) {
 
 export function parseCreateBody(body) {
   return parseBody(body, CREATE_FIELDS, CREATE_FIELDS);
+}
+
+export function parseUpdateBody(body) {
+  const changes = parseBody(body, UPDATE_FIELDS, []);
+  if (Object.keys(changes).length === 0) {
+    throw invalidInput(`Informe ao menos um campo: ${UPDATE_FIELDS.join(', ')}.`);
+  }
+  return changes;
+}
+
+// Business rule from the brief: an order can only be "concluida" if it has a
+// solution. Receives the state the order would have after the update.
+export function assertConclusionRule(order) {
+  const hasSolution = typeof order.solucao === 'string' && order.solucao.trim() !== '';
+  if (order.status === 'concluida' && !hasSolution) {
+    throw new HttpError(
+      400,
+      'REGRA_DE_CONCLUSAO',
+      'Uma ordem só pode ficar concluída se tiver uma solução preenchida.',
+    );
+  }
 }
 
 export function assertValidId(id) {
