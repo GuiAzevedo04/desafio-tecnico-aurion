@@ -3,6 +3,7 @@ import express from 'express';
 import helmet from 'helmet';
 import { pool } from './db/pool.js';
 import { errorHandler, routeNotFound } from './http/error-handler.js';
+import { ordersRouter } from './orders/routes.js';
 
 // Builds the app without listening, so tests can drive it in-process.
 export function createApp() {
@@ -25,6 +26,7 @@ export function createApp() {
   });
 
   app.use(express.json({ limit: '100kb' }));
+  app.use('/ordens', ordersRouter);
 
   app.use(routeNotFound);
   app.use(errorHandler);

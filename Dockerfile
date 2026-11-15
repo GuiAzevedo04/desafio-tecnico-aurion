@@ -1,5 +1,6 @@
 FROM node:24-alpine AS base
 WORKDIR /app
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 # Copy only the manifests first: the dependency layer is rebuilt only when they change.
 COPY package.json package-lock.json ./
 
