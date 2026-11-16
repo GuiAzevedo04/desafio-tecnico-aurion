@@ -9,7 +9,6 @@
   },
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
     "test": "node --test --test-concurrency=1 \"test/**/*.test.js\"",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write ."
