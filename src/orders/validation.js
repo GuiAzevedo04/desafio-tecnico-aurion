@@ -72,7 +72,9 @@ function invalidInput(message, details) {
 function parseBody(body, allowedFields, requiredFields) {
   const isPlainObject = body !== null && typeof body === 'object' && !Array.isArray(body);
   if (!isPlainObject) {
-    throw invalidInput('O corpo da requisição deve ser um objeto JSON.');
+    throw invalidInput(
+      'O corpo da requisição deve ser um objeto JSON, enviado com Content-Type: application/json.',
+    );
   }
 
   const values = {};
