@@ -377,6 +377,7 @@ Escolhi o **PostgreSQL** por três motivos:
 - **O dado é estruturado e tem schema fixo.** Uma ordem tem sempre os mesmos campos e tipos. Não há documentos de formato variável que justifiquem o MongoDB.
 - **As regras do domínio cabem em constraints.** `NOT NULL` e `CHECK` garantem no próprio banco o status válido, os textos não vazios e a regra de conclusão. Assim o dado continua correto mesmo que um bug ou um acesso manual passe por fora da API.
 - **A regra de conclusão precisa de leitura e escrita consistentes.** O `PATCH` lê a ordem, valida o estado resultante e grava. Transação com bloqueio de linha (`SELECT ... FOR UPDATE`) resolve isso de forma direta.
+- **É o SGBD que tenho maior familiaridade.**
 
 ## Decisões técnicas
 
@@ -530,7 +531,7 @@ Os testes passam pelas rotas HTTP reais e por um PostgreSQL real, sem mock do ba
 
 ## Uso de IA
 
-Usei IA (Claude Code, da Anthropic) como apoio neste desafio, nestas etapas:
+Usei o Claude Code como agente de código para me ajudar com diversos aspectos:
 
 - **Estrutura do projeto:** Dockerfile, Docker Compose e configuração de lint.
 - **Implementação:** a IA escreveu a primeira versão do código a partir dos requisitos e das decisões que eu defini, como o uso de PostgreSQL com SQL puro, a ordem das verificações do `PATCH` e a regra avaliada sobre o estado resultante.
